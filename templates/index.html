@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Editor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-red: #FF1E1E;
+            --dark-red: #CC0000;
+            --bg-dark: #0A0A0A;
+            --card-dark: #1A1A1A;
+            --border-dark: #2A2A2A;
+        }
+
+        body {
+            font-family: 'Bebas Neue', sans-serif;
+            background: var(--bg-dark);
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .drag-area {
+            border: 2px dashed var(--border-dark);
+            transition: all 0.3s ease;
+            background: var(--card-dark);
+        }
+
+        .drag-area.active {
+            border-color: var(--primary-red);
+            background-color: rgba(255, 30, 30, 0.1);
+            transform: scale(1.02);
+        }
+
+        .pdf-item {
+            cursor: move;
+            transition: all 0.3s ease;
+            background: var(--card-dark);
+            border: 1px solid var(--border-dark);
+        }
+
+        .pdf-item:hover {
+            transform: translateX(5px);
+            border-color: var(--primary-red);
+        }
+
+        .pdf-item.dragging {
+            opacity: 0.5;
+            background: var(--border-dark);
+        }
+
+        .section-card {
+            background: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            transition: all 0.3s ease;
+        }
+
+        .section-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px -1px rgba(255, 30, 30, 0.1);
+            border-color: var(--primary-red);
+        }
+
+        .button-primary {
+            background: var(--primary-red);
+            transition: all 0.3s ease;
+        }
+
+        .button-primary:hover {
+            background: var(--dark-red);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 30, 30, 0.3);
+        }
+
+        .button-success {
+            background: var(--primary-red);
+            transition: all 0.3s ease;
+        }
+
+        .button-success:hover {
+            background: var(--dark-red);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 30, 30, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        .delete-btn {
+            transition: all 0.2s ease;
+        }
+
+        .delete-btn:hover {
+            transform: scale(1.1);
+            color: var(--primary-red) !important;
+        }
+
+        /* Custom text styles */
+        .title-text {
+            font-size: 5rem;
+            text-shadow: 2px 2px 4px rgba(255, 30, 30, 0.3);
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            color: var(--primary-red);
+        }
+
+        /* File preview area */
+        .file-preview {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-dark);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-gray-100">
+    <div class="container px-4 py-8">
+        <h1 class="title-text font-bold text-center mb-12 text-white">PDF EDITOR</h1>
+        
+        <!-- PDF Compression Section -->
+        <div class="section-card rounded-lg shadow-lg p-8 mb-8">
+            <h2 class="section-title font-semibold mb-6">COMPRESS PDF</h2>
+            <div class="drag-area p-8 text-center rounded-lg mb-6" id="compressDropArea">
+                <p class="text-gray-400 mb-4">DRAG & DROP YOUR PDF FILE HERE OR</p>
+                <input type="file" id="compressFile" accept=".pdf" class="hidden">
+                <button onclick="document.getElementById('compressFile').click()" 
+                        class="button-primary text-white font-semibold py-3 px-6 rounded-lg">
+                    CHOOSE FILE
+                </button>
+            </div>
+            <div id="compressFilePreview" class="hidden mb-6 animate-fade-in">
+                <div class="flex items-center p-4 file-preview rounded-lg">
+                    <div class="flex-grow">
+                        <div class="font-medium" id="compressFileName"></div>
+                    </div>
+                    <button class="delete-btn text-gray-400 hover:text-red-500 px-2" id="clearCompressFile">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <button id="compressButton" 
+                    class="button-success w-full text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                COMPRESS PDF
+            </button>
+        </div>
+
+        <!-- PDF Merger Section -->
+        <div class="section-card rounded-lg shadow-lg p-8">
+            <h2 class="section-title font-semibold mb-6">MERGE PDFs</h2>
+            <div class="drag-area p-8 text-center rounded-lg mb-6" id="mergeDropArea">
+                <p class="text-gray-400 mb-4">DRAG & DROP MULTIPLE PDF FILES HERE OR</p>
+                <input type="file" id="mergeFiles" accept=".pdf" multiple class="hidden">
+                <button onclick="document.getElementById('mergeFiles').click()" 
+                        class="button-primary text-white font-semibold py-3 px-6 rounded-lg">
+                    CHOOSE FILES
+                </button>
+            </div>
+            <div id="fileList" class="mb-6">
+                <div class="text-sm text-gray-400 mb-3 hidden" id="reorderHint">
+                    <i class="fas fa-info-circle"></i> DRAG AND DROP ITEMS TO REORDER PDFs
+                </div>
+                <div id="pdfList"></div>
+            </div>
+            <button id="mergeButton" 
+                    class="button-success w-full text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                MERGE PDFs
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Compression functionality
+        const compressDropArea = document.getElementById('compressDropArea');
+        const compressFile = document.getElementById('compressFile');
+        const compressButton = document.getElementById('compressButton');
+        const compressFilePreview = document.getElementById('compressFilePreview');
+        const compressFileName = document.getElementById('compressFileName');
+        const clearCompressFile = document.getElementById('clearCompressFile');
+        let currentCompressFile = null;
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            compressDropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            compressDropArea.addEventListener(eventName, () => {
+                compressDropArea.classList.add('active');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            compressDropArea.addEventListener(eventName, () => {
+                compressDropArea.classList.remove('active');
+            });
+        });
+
+        compressDropArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            handleCompressFile(file);
+        });
+
+        compressFile.addEventListener('change', (e) => {
+            handleCompressFile(e.target.files[0]);
+        });
+
+        clearCompressFile.addEventListener('click', () => {
+            currentCompressFile = null;
+            compressFile.value = '';
+            compressFilePreview.classList.add('hidden');
+            compressButton.disabled = true;
+        });
+
+        function handleCompressFile(file) {
+            if (file && file.type === 'application/pdf') {
+                currentCompressFile = file;
+                compressFileName.textContent = file.name;
+                compressFilePreview.classList.remove('hidden');
+                compressButton.disabled = false;
+            }
+        }
+
+        compressButton.addEventListener('click', async () => {
+            if (!currentCompressFile) return;
+
+            const formData = new FormData();
+            formData.append('file', currentCompressFile);
+
+            try {
+                const response = await fetch('/compress', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    // Create compressed filename
+                    const originalName = currentCompressFile.name;
+                    const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                    a.download = `compressed_${nameWithoutExt}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error compressing PDF');
+                }
+            } catch (error) {
+                alert('Error compressing PDF');
+            }
+        });
+
+        // Enhanced Merge functionality
+        const mergeDropArea = document.getElementById('mergeDropArea');
+        const mergeFiles = document.getElementById('mergeFiles');
+        const mergeButton = document.getElementById('mergeButton');
+        const pdfList = document.getElementById('pdfList');
+        const reorderHint = document.getElementById('reorderHint');
+        let fileArray = [];
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            mergeDropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            mergeDropArea.addEventListener(eventName, () => {
+                mergeDropArea.classList.add('active');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            mergeDropArea.addEventListener(eventName, () => {
+                mergeDropArea.classList.remove('active');
+            });
+        });
+
+        mergeDropArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            handleMergeFiles(dt.files);
+        });
+
+        mergeFiles.addEventListener('change', (e) => {
+            handleMergeFiles(e.target.files);
+        });
+
+        function handleMergeFiles(files) {
+            // Append new files instead of replacing
+            const newFiles = Array.from(files);
+            newFiles.forEach(file => {
+                if (file.type === 'application/pdf') {
+                    fileArray.push(file);
+                }
+            });
+            updatePDFList();
+        }
+
+        function updatePDFList() {
+            pdfList.innerHTML = '';
+            let allPdfs = true;
+
+            fileArray.forEach((file, index) => {
+                if (file.type !== 'application/pdf') {
+                    allPdfs = false;
+                    return;
+                }
+
+                const div = document.createElement('div');
+                div.className = 'pdf-item flex items-center p-4 rounded-lg mb-3 animate-fade-in';
+                div.draggable = true;
+                div.innerHTML = `
+                    <div class="mr-4 cursor-move text-gray-400">
+                        <i class="fas fa-grip-vertical"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <div class="font-medium text-gray-200">${file.name}</div>
+                        <div class="text-sm text-gray-400">POSITION: ${index + 1}</div>
+                    </div>
+                    <button class="delete-btn text-gray-400 hover:text-red-500 px-2" data-index="${index}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragend', handleDragEnd);
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('drop', handleDrop);
+
+                const deleteBtn = div.querySelector('.delete-btn');
+                deleteBtn.addEventListener('click', () => {
+                    fileArray.splice(index, 1);
+                    updatePDFList();
+                });
+
+                pdfList.appendChild(div);
+            });
+
+            // Show/hide the reorder hint and update button state
+            reorderHint.classList.toggle('hidden', fileArray.length < 2);
+            mergeButton.disabled = !(fileArray.length >= 2 && allPdfs);
+
+            // Clear the file input to allow selecting the same file again
+            mergeFiles.value = '';
+        }
+
+        let draggedItem = null;
+
+        function handleDragStart(e) {
+            draggedItem = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            draggedItem = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            if (this === draggedItem) return;
+
+            const allItems = [...pdfList.querySelectorAll('.pdf-item')];
+            const draggedIndex = allItems.indexOf(draggedItem);
+            const droppedIndex = allItems.indexOf(this);
+
+            // Reorder the files array
+            const [movedFile] = fileArray.splice(draggedIndex, 1);
+            fileArray.splice(droppedIndex, 0, movedFile);
+
+            updatePDFList();
+        }
+
+        mergeButton.addEventListener('click', async () => {
+            if (fileArray.length < 2) return;
+
+            const formData = new FormData();
+            fileArray.forEach((file, index) => {
+                formData.append('files[]', file);
+                formData.append('order[]', index.toString());
+            });
+
+            try {
+                const response = await fetch('/merge', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'merged.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Error merging PDFs');
+                }
+            } catch (error) {
+                alert('Error merging PDFs');
+            }
+        });
+    </script>
+</body>
+</html> 
