@@ -38,7 +38,7 @@ A modern, sleek web application for PDF manipulation with a dark theme and red a
 - Werkzeug for file handling
 - In-memory file processing
 
-## 🛠️ Installation
+## 🛠️ Local Installation
 
 1. Clone the repository:
 ```bash
@@ -60,7 +60,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Run the application:
+4. Run the application locally:
 ```bash
 python app.py
 ```
@@ -68,6 +68,147 @@ python app.py
 5. Open your browser and navigate to:
 ```
 http://localhost:5000
+```
+
+## 🚀 AWS EC2 Deployment
+
+### Prerequisites
+- An AWS account
+- EC2 instance running Ubuntu
+- Basic knowledge of SSH and Linux commands
+
+### Server Setup
+
+1. Connect to your EC2 instance:
+```bash
+ssh -i your-key.pem ubuntu@your-ec2-ip
+```
+
+2. Update system packages:
+```bash
+sudo apt update
+sudo apt upgrade -y
+```
+
+3. Install required system packages:
+```bash
+sudo apt install python3-pip python3-venv nginx -y
+```
+
+4. Clone the repository:
+```bash
+git clone https://github.com/apih99/pdf-editor.git
+cd pdf-editor
+```
+
+5. Set up Python virtual environment:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install gunicorn
+```
+
+6. Create a systemd service file:
+```bash
+sudo nano /etc/systemd/system/pdf-editor.service
+```
+
+Add the following content:
+```ini
+[Unit]
+Description=PDF Editor Flask Application
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/pdf-editor
+Environment="PATH=/home/ubuntu/pdf-editor/venv/bin"
+ExecStart=/home/ubuntu/pdf-editor/venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
+
+[Install]
+WantedBy=multi-user.target
+```
+
+7. Configure Nginx:
+```bash
+sudo nano /etc/nginx/sites-available/pdf-editor
+```
+
+Add the following configuration:
+```nginx
+server {
+    listen 80;
+    server_name your_domain_or_ip;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+8. Enable the Nginx configuration:
+```bash
+sudo ln -s /etc/nginx/sites-available/pdf-editor /etc/nginx/sites-enabled
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+9. Start the application:
+```bash
+sudo systemctl start pdf-editor
+sudo systemctl enable pdf-editor
+```
+
+### Directory Structure
+Ensure your directory structure looks like this:
+```
+/home/ubuntu/pdf-editor/
+├── app.py
+├── requirements.txt
+├── templates/
+│   └── index.html
+├── static/
+│   └── [static files if any]
+└── venv/
+```
+
+### Troubleshooting
+
+1. Check application status:
+```bash
+sudo systemctl status pdf-editor
+```
+
+2. View application logs:
+```bash
+sudo journalctl -u pdf-editor -f
+```
+
+3. Check Nginx logs:
+```bash
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/access.log
+```
+
+4. Common issues and solutions:
+- **Template not found**: Ensure the `templates` directory is in the correct location
+- **Permission issues**: Check file permissions with `ls -la`
+- **Port in use**: Check if port 8000 is free with `sudo lsof -i :8000`
+- **Nginx 502 Bad Gateway**: Check if gunicorn is running properly
+
+5. Security considerations:
+```bash
+# Set proper permissions
+sudo chown -R ubuntu:ubuntu /home/ubuntu/pdf-editor
+chmod -R 755 /home/ubuntu/pdf-editor
+
+# Configure firewall
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
 ```
 
 ## 📝 Usage
