@@ -28,14 +28,42 @@ sudo apt install python3-pip python3-venv nginx certbot python3-certbot-nginx -y
 
 ## 2. Application Setup
 
-### 2.1 Clone Repository
+### 2.1 Set Up GitHub SSH Access
 ```bash
-cd /home/ubuntu
-git clone https://github.com/apih99/pdf-editor.git
-cd pdf-editor
+# Generate SSH key
+ssh-keygen -t ed25519 -C "your-email@example.com"
+
+# Start SSH agent and add key
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+
+# Display public key (add this to GitHub)
+cat ~/.ssh/id_ed25519.pub
 ```
 
-### 2.2 Set Up Python Environment
+Add the SSH key to GitHub:
+1. Go to GitHub.com → Settings → SSH and GPG keys
+2. Click "New SSH key"
+3. Title: "EC2 PDF Editor Deploy Key"
+4. Key: Paste the output from `cat ~/.ssh/id_ed25519.pub`
+5. Click "Add SSH key"
+
+Test the connection:
+```bash
+ssh -T git@github.com
+```
+
+### 2.2 Clone Repository
+```bash
+cd /home/ubuntu
+git clone git@github.com:yourusername/pdf-editor.git
+cd pdf-editor
+
+# Set correct ownership
+sudo chown -R ubuntu:ubuntu /home/ubuntu/pdf-editor
+```
+
+### 2.3 Set Up Python Environment
 ```bash
 python3 -m venv venv
 source venv/bin/activate
@@ -154,14 +182,40 @@ sudo vim /home/ubuntu/pdf-editor-webhook.sh
 Add content:
 ```bash
 #!/bin/bash
+# Run as ubuntu user
+if [ "$(id -u)" = "0" ]; then
+    exec sudo -u ubuntu "$0" "$@"
+    exit
+fi
+
+# Setup SSH agent
+export HOME=/home/ubuntu
+eval "$(ssh-agent -s)"
+ssh-add /home/ubuntu/.ssh/id_ed25519
+
 cd /home/ubuntu/pdf-editor
 git pull origin main
+
+# Restart service (this needs sudo)
 sudo systemctl restart pdf-editor
+
+# Kill SSH agent
+kill $SSH_AGENT_PID
 ```
 
-Make it executable:
+Set correct permissions:
 ```bash
-chmod +x /home/ubuntu/pdf-editor-webhook.sh
+sudo chown ubuntu:ubuntu /home/ubuntu/pdf-editor-webhook.sh
+sudo chmod 755 /home/ubuntu/pdf-editor-webhook.sh
+```
+
+Test the webhook script:
+```bash
+# Test as ubuntu user
+./pdf-editor-webhook.sh
+
+# Test with sudo (should still work)
+sudo ./pdf-editor-webhook.sh
 ```
 
 Create webhook configuration:
@@ -253,7 +307,11 @@ sudo tail -f /var/log/nginx/access.log
 1. **502 Bad Gateway**: Check if gunicorn is running
 2. **Permission Issues**: Verify file permissions
 3. **SSL Issues**: Check certbot configuration
-4. **Git Pull Fails**: Verify repository permissions
+4. **Git Pull Fails**: 
+   - Check if SSH key is properly set up
+   - Ensure git commands are run as ubuntu user, not root
+   - Verify repository permissions: `sudo chown -R ubuntu:ubuntu /home/ubuntu/pdf-editor`
+   - Test SSH connection: `ssh -T git@github.com`
 5. **Webhook Connection Failed**: Follow these steps:
    ```bash
    # 1. Check webhook service status
@@ -273,6 +331,12 @@ sudo tail -f /var/log/nginx/access.log
    
    # 6. Check EC2 security group
    # Make sure inbound rule for port 9000 is added
+   
+   # 7. Check webhook script permissions
+   ls -la /home/ubuntu/pdf-editor-webhook.sh
+   
+   # 8. Verify git repository permissions
+   ls -la /home/ubuntu/pdf-editor
    ```
 
 ## 10. Maintenance
