@@ -193,7 +193,7 @@ Description=Webhook for PDF Editor
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/webhook -hooks /etc/webhook/hooks.json -verbose
+ExecStart=/usr/bin/webhook -hooks /etc/webhook/hooks.json -verbose -ip "0.0.0.0" -port 9000
 WorkingDirectory=/home/ubuntu
 
 [Install]
@@ -254,6 +254,26 @@ sudo tail -f /var/log/nginx/access.log
 2. **Permission Issues**: Verify file permissions
 3. **SSL Issues**: Check certbot configuration
 4. **Git Pull Fails**: Verify repository permissions
+5. **Webhook Connection Failed**: Follow these steps:
+   ```bash
+   # 1. Check webhook service status
+   sudo systemctl status webhook
+   
+   # 2. Verify webhook is listening
+   sudo netstat -tlpn | grep webhook
+   
+   # 3. Check webhook logs
+   sudo journalctl -u webhook -f
+   
+   # 4. Ensure port 9000 is open
+   sudo ufw status
+   
+   # 5. Test webhook locally
+   curl -X POST http://localhost:9000/hooks/pdf-editor-deploy
+   
+   # 6. Check EC2 security group
+   # Make sure inbound rule for port 9000 is added
+   ```
 
 ## 10. Maintenance
 
@@ -273,4 +293,5 @@ sudo certbot renew
 Regularly backup these files:
 - `/etc/nginx/sites-available/pdf-editor`
 - `/etc/systemd/system/pdf-editor.service`
-- `/etc/webhook/hooks.json` (if using webhooks) 
+- `/etc/webhook/hooks.json` (if using webhooks)
+```
