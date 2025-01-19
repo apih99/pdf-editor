@@ -176,6 +176,16 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .format-btn {
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .format-btn.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -237,6 +247,41 @@
                     class="button-success w-full text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled>
                 MERGE PDFs
+            </button>
+        </div>
+
+        <!-- PDF to Image Converter Section -->
+        <div class="section-card rounded-lg shadow-lg p-8 mt-8">
+            <h2 class="section-title font-semibold mb-6">PDF TO IMAGE</h2>
+            <div class="drag-area p-8 text-center rounded-lg mb-6" id="convertDropArea">
+                <p class="text-gray-400 mb-4">DRAG & DROP YOUR PDF FILE HERE OR</p>
+                <input type="file" id="convertFile" accept=".pdf" class="hidden">
+                <button onclick="document.getElementById('convertFile').click()" 
+                        class="button-primary text-white font-semibold py-3 px-6 rounded-lg">
+                    CHOOSE FILE
+                </button>
+            </div>
+            <div id="convertFilePreview" class="hidden mb-6 animate-fade-in">
+                <div class="flex items-center p-4 file-preview rounded-lg">
+                    <div class="flex-grow">
+                        <div class="font-medium" id="convertFileName"></div>
+                    </div>
+                    <button class="delete-btn text-gray-400 hover:text-red-500 px-2" id="clearConvertFile">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-400 mb-2">OUTPUT FORMAT</label>
+                <div class="flex gap-4">
+                    <button class="format-btn button-primary text-white font-semibold py-2 px-6 rounded-lg active" data-format="png">PNG</button>
+                    <button class="format-btn button-primary text-white font-semibold py-2 px-6 rounded-lg" data-format="jpeg">JPEG</button>
+                </div>
+            </div>
+            <button id="convertButton" 
+                    class="button-success w-full text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                CONVERT TO IMAGES
             </button>
         </div>
     </div>
@@ -302,7 +347,15 @@
         function showLoading(action) {
             const loadingOverlay = document.getElementById('loadingOverlay');
             const loadingText = document.getElementById('loadingText');
-            loadingText.textContent = action === 'compress' ? 'COMPRESSING PDF...' : 'MERGING PDFs...';
+            
+            if (typeof action === 'string') {
+                loadingText.textContent = action;
+            } else {
+                loadingText.textContent = action === 'compress' ? 'COMPRESSING PDF...' : 
+                                        action === 'merge' ? 'MERGING PDFs...' : 
+                                        'PROCESSING PDF...';
+            }
+            
             loadingOverlay.style.display = 'flex';
         }
 
@@ -504,6 +557,127 @@
                 }
             } catch (error) {
                 alert('Error merging PDFs');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        // PDF to Image conversion functionality
+        const convertDropArea = document.getElementById('convertDropArea');
+        const convertFile = document.getElementById('convertFile');
+        const convertButton = document.getElementById('convertButton');
+        const convertFilePreview = document.getElementById('convertFilePreview');
+        const convertFileName = document.getElementById('convertFileName');
+        const clearConvertFile = document.getElementById('clearConvertFile');
+        const formatButtons = document.querySelectorAll('.format-btn');
+        let selectedFormat = 'png';
+        let currentConvertFile = null;
+
+        // Format selection
+        formatButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                formatButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedFormat = btn.dataset.format;
+            });
+        });
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            convertDropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Handle drag enter and over
+        ['dragenter', 'dragover'].forEach(eventName => {
+            convertDropArea.addEventListener(eventName, () => {
+                convertDropArea.classList.add('active');
+            });
+        });
+
+        // Handle drag leave and drop
+        ['dragleave', 'drop'].forEach(eventName => {
+            convertDropArea.addEventListener(eventName, () => {
+                convertDropArea.classList.remove('active');
+            });
+        });
+
+        // Handle dropped files
+        convertDropArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            handleConvertFile(file);
+        });
+
+        // Handle file selection
+        convertFile.addEventListener('change', (e) => {
+            handleConvertFile(e.target.files[0]);
+        });
+
+        // Clear file selection
+        clearConvertFile.addEventListener('click', () => {
+            currentConvertFile = null;
+            convertFile.value = '';
+            convertFilePreview.classList.add('hidden');
+            convertButton.disabled = true;
+        });
+
+        function handleConvertFile(file) {
+            if (file && file.type === 'application/pdf') {
+                currentConvertFile = file;
+                convertFileName.textContent = file.name;
+                convertFilePreview.classList.remove('hidden');
+                convertButton.disabled = false;
+            } else if (file) {
+                alert('Please select a PDF file');
+            }
+        }
+
+        // Convert button click handler
+        convertButton.addEventListener('click', async () => {
+            if (!currentConvertFile) return;
+
+            const formData = new FormData();
+            formData.append('file', currentConvertFile);
+            formData.append('format', selectedFormat);
+
+            showLoading('CONVERTING PDF TO IMAGES...');
+
+            try {
+                const response = await fetch('/convert-to-images', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    let errorMessage;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error;
+                    } catch (e) {
+                        // If response is not JSON, get text content
+                        const text = await response.text();
+                        errorMessage = 'Server error: ' + (text.slice(0, 100) || response.statusText);
+                    }
+                    throw new Error(errorMessage || 'Conversion failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const originalName = currentConvertFile.name;
+                const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                a.download = `${nameWithoutExt}_images.zip`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+                // Clear the form
+                clearConvertFile.click();
+            } catch (error) {
+                console.error('Conversion error:', error);
+                alert(error.message || 'Error converting PDF to images');
             } finally {
                 hideLoading();
             }
