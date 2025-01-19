@@ -358,4 +358,178 @@ Regularly backup these files:
 - `/etc/nginx/sites-available/pdf-editor`
 - `/etc/systemd/system/pdf-editor.service`
 - `/etc/webhook/hooks.json` (if using webhooks)
+
+## Railway Deployment Guide
+
+### Prerequisites
+- A GitHub account
+- A Railway account (sign up at railway.app)
+- Your project pushed to GitHub
+
+### 1. Project Setup
+
+1. Create a new file named `Procfile` in your project root:
+```bash
+web: gunicorn app:app
 ```
+
+2. Create a `runtime.txt` file to specify Python version:
+```bash
+python-3.9.18
+```
+
+3. Update your `requirements.txt` to ensure all dependencies are listed:
+```txt
+Flask==2.0.1
+PyPDF2==3.0.1
+Werkzeug==2.0.1
+python-dotenv==0.19.0
+PyMuPDF==1.23.8
+Pillow==10.2.0
+gunicorn==21.2.0
+```
+
+### 2. Railway Setup
+
+1. Go to [Railway Dashboard](https://railway.app/dashboard)
+2. Click "New Project"
+3. Select "Deploy from GitHub repo"
+4. Choose your PDF Editor repository
+5. Railway will automatically detect your Python project
+
+### 3. Environment Setup
+
+1. In Railway dashboard, go to your project settings
+2. Add the following environment variables:
+   - `PYTHON_VERSION`: 3.9.18
+   - `FLASK_APP`: app.py
+   - `FLASK_ENV`: production
+
+### 4. Deployment
+
+Railway will automatically:
+1. Detect your Python project
+2. Install dependencies from requirements.txt
+3. Run the Procfile command
+4. Assign a domain to your project
+
+### 5. Custom Domain (Optional)
+
+1. In Railway dashboard, go to your project
+2. Click on "Settings"
+3. Navigate to "Domains"
+4. Click "Generate Domain" or "Add Custom Domain"
+5. Follow the DNS configuration instructions if using a custom domain
+
+### 6. Monitoring
+
+1. View logs in Railway dashboard:
+   - Go to your project
+   - Click "Deployments"
+   - Select current deployment
+   - View real-time logs
+
+2. Monitor application metrics:
+   - CPU usage
+   - Memory usage
+   - Request logs
+
+### 7. Automatic Deployments
+
+Railway automatically deploys when you:
+1. Push to your GitHub repository
+2. Merge pull requests
+3. Make changes through the Railway CLI
+
+### 8. Troubleshooting
+
+1. **Build Failures**:
+   - Check build logs in Railway dashboard
+   - Verify requirements.txt is complete
+   - Ensure Python version is correct
+
+2. **Runtime Errors**:
+   - Check application logs
+   - Verify environment variables
+   - Check resource limits
+
+3. **Common Issues**:
+   ```bash
+   # If your app crashes, check logs:
+   railway logs
+
+   # If you need to restart:
+   railway up
+
+   # To check status:
+   railway status
+   ```
+
+### 9. Best Practices
+
+1. **Security**:
+   - Never commit sensitive data
+   - Use environment variables for secrets
+   - Keep dependencies updated
+
+2. **Performance**:
+   - Set appropriate gunicorn workers
+   - Configure proper timeouts
+   - Monitor memory usage
+
+3. **Maintenance**:
+   - Regularly update dependencies
+   - Monitor application logs
+   - Set up alerts for errors
+
+### 10. Railway CLI (Optional)
+
+1. Install Railway CLI:
+```bash
+# macOS or Linux
+brew install railway
+
+# Windows
+scoop install railway
+```
+
+2. Login to Railway:
+```bash
+railway login
+```
+
+3. Link your project:
+```bash
+railway link
+```
+
+4. Common commands:
+```bash
+# Deploy your project
+railway up
+
+# View logs
+railway logs
+
+# Open dashboard
+railway open
+
+# List environment variables
+railway variables
+```
+
+### 11. Cost Management
+
+1. Monitor usage in Railway dashboard
+2. Set up usage alerts
+3. Configure auto-scaling limits
+4. Review pricing tiers regularly
+
+Remember to:
+- Keep your repository up to date
+- Monitor application logs
+- Set up proper error notifications
+- Regularly update dependencies
+- Back up your data if needed
+
+For more information, visit [Railway Documentation](https://docs.railway.app/)
