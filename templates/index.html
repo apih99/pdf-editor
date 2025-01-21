@@ -85,14 +85,17 @@
         }
 
         .button-primary {
-            background: var(--primary-red);
+            background-color: #FF1E1E;
             transition: all 0.3s ease;
         }
 
-        .button-primary:hover {
-            background: var(--dark-red);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(255, 30, 30, 0.3);
+        .button-primary:hover:not(:disabled) {
+            background-color: #CC0000;
+        }
+
+        .button-primary:disabled {
+            background-color: #FF1E1E;
+            opacity: 0.5;
         }
 
         .button-success {
@@ -104,6 +107,11 @@
             background: var(--dark-red);
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(255, 30, 30, 0.3);
+        }
+
+        .button-success:disabled {
+            background: var(--primary-red);
+            opacity: 0.5;
         }
 
         @keyframes fadeIn {
@@ -282,6 +290,34 @@
                     class="button-success w-full text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled>
                 CONVERT TO IMAGES
+            </button>
+        </div>
+
+        <!-- Markdown to PDF Converter Section -->
+        <div class="section-card rounded-lg shadow-lg p-8 mt-8">
+            <h2 class="section-title font-semibold mb-6">MARKDOWN TO PDF</h2>
+            <div class="drag-area p-8 text-center rounded-lg mb-6" id="mdDropArea">
+                <input type="file" id="mdFile" accept=".md,.markdown" class="hidden">
+                <p class="text-gray-400 mb-4">DRAG & DROP YOUR MARKDOWN FILE HERE OR</p>
+                <button type="button" id="mdChooseBtn" 
+                        class="button-primary text-white font-semibold py-3 px-6 rounded-lg">
+                    CHOOSE FILE
+                </button>
+            </div>
+            <div id="mdFilePreview" class="hidden mb-6 animate-fade-in">
+                <div class="flex items-center p-4 file-preview rounded-lg">
+                    <div class="flex-grow">
+                        <div class="font-medium" id="mdFileName"></div>
+                    </div>
+                    <button class="delete-btn text-gray-400 hover:text-red-500 px-2" id="clearMdFile">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <button id="mdToPdfBtn" 
+                    class="button-primary w-full text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                CONVERT TO PDF
             </button>
         </div>
     </div>
@@ -678,6 +714,138 @@
             } catch (error) {
                 console.error('Conversion error:', error);
                 alert(error.message || 'Error converting PDF to images');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        // Markdown to PDF functionality
+        const mdDropArea = document.getElementById('mdDropArea');
+        const mdFile = document.getElementById('mdFile');
+        const mdChooseBtn = document.getElementById('mdChooseBtn');
+        const mdToPdfBtn = document.getElementById('mdToPdfBtn');
+        const mdFileName = document.getElementById('mdFileName');
+        const mdFilePreview = document.getElementById('mdFilePreview');
+        const clearMdFile = document.getElementById('clearMdFile');
+        let currentMdFile = null;
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            mdDropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Handle drag visual feedback
+        ['dragenter', 'dragover'].forEach(eventName => {
+            mdDropArea.addEventListener(eventName, () => {
+                mdDropArea.classList.add('active');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            mdDropArea.addEventListener(eventName, () => {
+                mdDropArea.classList.remove('active');
+            });
+        });
+
+        // Handle file selection
+        mdDropArea.addEventListener('drop', handleMdDrop, false);
+        mdFile.addEventListener('change', handleMdSelect);
+        mdChooseBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event from bubbling to mdDropArea
+            mdFile.click();
+        });
+
+        function handleMdDrop(e) {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            handleMdFile(file);
+        }
+
+        function handleMdSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleMdFile(file);
+            }
+        }
+
+        function handleMdFile(file) {
+            if (!file) return;
+            
+            if (file.name.endsWith('.md') || file.name.endsWith('.markdown')) {
+                currentMdFile = file;
+                mdFileName.textContent = file.name;
+                mdFilePreview.classList.remove('hidden');
+                mdToPdfBtn.disabled = false;
+                mdToPdfBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                alert('Please select a Markdown file (.md or .markdown)');
+                clearMdFileSelection();
+            }
+        }
+
+        function clearMdFileSelection() {
+            currentMdFile = null;
+            mdFile.value = '';
+            mdFileName.textContent = '';
+            mdFilePreview.classList.add('hidden');
+            mdToPdfBtn.disabled = true;
+            mdToPdfBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Clear file selection when clicking the clear button
+        clearMdFile.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event from bubbling
+            clearMdFileSelection();
+        });
+
+        mdToPdfBtn.addEventListener('click', async () => {
+            if (!currentMdFile) {
+                alert('Please select a Markdown file first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', currentMdFile);
+
+            showLoading('CONVERTING MARKDOWN TO PDF...');
+            
+            try {
+                const response = await fetch('/md-to-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    let errorMessage;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error;
+                    } catch (e) {
+                        const text = await response.text();
+                        errorMessage = 'Server error: ' + (text.slice(0, 100) || response.statusText);
+                    }
+                    throw new Error(errorMessage || 'Conversion failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const filename = currentMdFile.name.replace(/\.(md|markdown)$/, '.pdf');
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+                // Clear the form after successful conversion but keep button red
+                clearMdFileSelection();
+                // Remove disabled styling but keep button red
+                mdToPdfBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                mdToPdfBtn.disabled = false;
+            } catch (error) {
+                console.error('Conversion error:', error);
+                alert(error.message || 'Error converting Markdown to PDF');
             } finally {
                 hideLoading();
             }
