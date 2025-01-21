@@ -6,33 +6,46 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000
 
-# Install system dependencies required for PyMuPDF and Pillow
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    python3-dev \
-    libffi-dev \
-    libssl-dev \
+# Install system dependencies including wkhtmltopdf and its dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wkhtmltopdf \
+    xvfb \
+    xfonts-75dpi \
+    xfonts-base \
+    fontconfig \
     libjpeg-dev \
     zlib1g-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and set working directory
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements first for better cache
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create uploads directory
+RUN mkdir uploads && chmod 777 uploads
+
 # Copy the rest of the application
 COPY . .
 
-# Create uploads directory
-RUN mkdir -p uploads && chmod 755 uploads
+# Create a wrapper script for wkhtmltopdf with xvfb
+RUN echo '#!/bin/bash\nxvfb-run -a --server-args="-screen 0, 1024x768x24" /usr/bin/wkhtmltopdf "$@"' > /usr/local/bin/wkhtmltopdf.sh \
+    && chmod +x /usr/local/bin/wkhtmltopdf.sh
 
-# Expose the port the app runs on
-EXPOSE 8000
+# Set up entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Command to run the application
-CMD gunicorn --bind 0.0.0.0:$PORT app:app --workers 4 --timeout 120
+# Expose port
+EXPOSE $PORT
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default command
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app:app"]
