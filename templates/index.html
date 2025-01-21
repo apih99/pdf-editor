@@ -194,6 +194,65 @@
             opacity: 1;
             transform: scale(1.05);
         }
+
+        /* Feature Navigation Menu */
+        .feature-nav {
+            position: fixed;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: rgba(26, 26, 26, 0.9);
+            padding: 1rem;
+            border-radius: 1rem 0 0 1rem;
+            border: 1px solid var(--border-dark);
+            border-right: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .feature-nav label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            color: #666;
+            white-space: nowrap;
+        }
+
+        .feature-nav label:hover {
+            color: var(--primary-red);
+            background: rgba(255, 30, 30, 0.1);
+            transform: translateX(-5px);
+        }
+
+        .feature-nav input[type="radio"] {
+            display: none;
+        }
+
+        .feature-nav input[type="radio"]:checked + label {
+            color: var(--primary-red);
+            background: rgba(255, 30, 30, 0.1);
+            font-weight: bold;
+            transform: translateX(-5px);
+        }
+
+        /* Smooth Scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Section IDs */
+        #compress-section,
+        #merge-section,
+        #convert-section,
+        #markdown-section {
+            scroll-margin-top: 2rem;
+        }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -203,11 +262,26 @@
         <div class="loading-text" id="loadingText">PROCESSING PDF...</div>
     </div>
 
+    <!-- Feature Navigation -->
+    <nav class="feature-nav">
+        <input type="radio" name="feature" id="nav-compress" value="compress-section">
+        <label for="nav-compress">COMPRESS PDF</label>
+
+        <input type="radio" name="feature" id="nav-merge" value="merge-section">
+        <label for="nav-merge">MERGE PDFs</label>
+
+        <input type="radio" name="feature" id="nav-convert" value="convert-section">
+        <label for="nav-convert">PDF TO IMAGE</label>
+
+        <input type="radio" name="feature" id="nav-markdown" value="markdown-section">
+        <label for="nav-markdown">MD TO PDF</label>
+    </nav>
+
     <div class="container px-4 py-8">
         <h1 class="title-text font-bold text-center mb-12 text-white">PDF EDITOR</h1>
         
         <!-- PDF Compression Section -->
-        <div class="section-card rounded-lg shadow-lg p-8 mb-8">
+        <div id="compress-section" class="section-card rounded-lg shadow-lg p-8 mb-8">
             <h2 class="section-title font-semibold mb-6">COMPRESS PDF</h2>
             <div class="drag-area p-8 text-center rounded-lg mb-6" id="compressDropArea">
                 <p class="text-gray-400 mb-4">DRAG & DROP YOUR PDF FILE HERE OR</p>
@@ -235,7 +309,7 @@
         </div>
 
         <!-- PDF Merger Section -->
-        <div class="section-card rounded-lg shadow-lg p-8">
+        <div id="merge-section" class="section-card rounded-lg shadow-lg p-8">
             <h2 class="section-title font-semibold mb-6">MERGE PDFs</h2>
             <div class="drag-area p-8 text-center rounded-lg mb-6" id="mergeDropArea">
                 <p class="text-gray-400 mb-4">DRAG & DROP MULTIPLE PDF FILES HERE OR</p>
@@ -259,7 +333,7 @@
         </div>
 
         <!-- PDF to Image Converter Section -->
-        <div class="section-card rounded-lg shadow-lg p-8 mt-8">
+        <div id="convert-section" class="section-card rounded-lg shadow-lg p-8 mt-8">
             <h2 class="section-title font-semibold mb-6">PDF TO IMAGE</h2>
             <div class="drag-area p-8 text-center rounded-lg mb-6" id="convertDropArea">
                 <p class="text-gray-400 mb-4">DRAG & DROP YOUR PDF FILE HERE OR</p>
@@ -294,7 +368,7 @@
         </div>
 
         <!-- Markdown to PDF Converter Section -->
-        <div class="section-card rounded-lg shadow-lg p-8 mt-8">
+        <div id="markdown-section" class="section-card rounded-lg shadow-lg p-8 mt-8">
             <h2 class="section-title font-semibold mb-6">MARKDOWN TO PDF</h2>
             <div class="drag-area p-8 text-center rounded-lg mb-6" id="mdDropArea">
                 <input type="file" id="mdFile" accept=".md,.markdown" class="hidden">
@@ -850,6 +924,43 @@
                 hideLoading();
             }
         });
+
+        // Feature Navigation
+        document.querySelectorAll('.feature-nav input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const sectionId = e.target.value;
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Update radio selection on scroll
+        const sections = document.querySelectorAll('div[id$="-section"]');
+        const navRadios = document.querySelectorAll('.feature-nav input[type="radio"]');
+
+        function updateNavigation() {
+            let currentSection = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.scrollY >= (sectionTop - sectionHeight/3)) {
+                    currentSection = section.id;
+                }
+            });
+
+            navRadios.forEach(radio => {
+                if (radio.value === currentSection) {
+                    radio.checked = true;
+                }
+            });
+        }
+
+        window.addEventListener('scroll', updateNavigation);
+        
+        // Initial check for active section
+        updateNavigation();
     </script>
     <!-- Add footer before closing body tag -->
     <footer class="w-full py-4 mt-8 text-center text-gray-400 bg-[#1A1A1A] border-t border-[#2A2A2A]">
